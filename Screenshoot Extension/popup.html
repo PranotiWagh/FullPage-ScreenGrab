@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Crawler & Screenshot</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(22, 30, 46, 0.85);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --input-bg: #0d1525;
+      --input-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-glow: rgba(79, 70, 229, 0.35);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      background-color: var(--bg);
+      min-width: 440px;
+    }
+
+    body {
+      width: 100%;
+      min-width: 440px;
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 560px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      font-family: var(--font);
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    body::-webkit-scrollbar, .log-terminal::-webkit-scrollbar { width: 6px; }
+    body::-webkit-scrollbar-thumb, .log-terminal::-webkit-scrollbar-thumb {
+      background: #334155; border-radius: 4px;
+    }
+
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--card-border);
+    }
+    .header-brand { display: flex; align-items: center; gap: 8px; }
+    .header-icon {
+      width: 28px; height: 28px; background: linear-gradient(135deg, #4f46e5, #06b6d4);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      font-size: 15px; box-shadow: 0 4px 12px var(--primary-glow);
+    }
+    .header-title { font-size: 14px; font-weight: 700; color: #fff; }
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+
+    .btn-popout {
+      background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+      font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 5px;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+      transition: all 0.2s ease;
+    }
+    .btn-popout:hover { background: #334155; color: #fff; border-color: #475569; }
+
+    .status-badge {
+      font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 12px;
+      text-transform: uppercase; letter-spacing: 0.5px; background: #1e293b;
+      color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.08);
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .status-badge.crawling { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .status-badge.logging_in { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .status-badge.completed { background: rgba(79, 70, 229, 0.15); color: #818cf8; }
+    .status-badge.error { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+    .pulse-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+      animation: pulse 1.6s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    .detected-tab-banner {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 7px;
+      padding: 7px 10px; margin-bottom: 10px; display: flex; align-items: center;
+      justify-content: space-between; gap: 8px; font-size: 11.5px;
+    }
+    .detected-tab-url {
+      color: #38bdf8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: ui-monospace, monospace; flex: 1;
+    }
+    .btn-tab-sync {
+      background: #1e293b; border: 1px solid #334155; color: #cbd5e1;
+      font-size: 11px; padding: 3px 8px; border-radius: 5px; cursor: pointer; white-space: nowrap;
+    }
+    .btn-tab-sync:hover { background: #334155; color: #fff; }
+
+    .section {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 10px; padding: 12px; margin-bottom: 10px; backdrop-filter: blur(8px);
+    }
+    .section-title {
+      font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;
+    }
+
+    label { display: block; font-size: 11.5px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; }
+    input[type="text"], input[type="password"], input[type="number"], textarea {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--input-border);
+      color: #ffffff; border-radius: 6px; padding: 7px 10px; font-size: 12px;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input::placeholder, textarea::placeholder { color: #64748b; opacity: 1; }
+    input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); }
+    textarea {
+      resize: vertical; min-height: 55px; max-height: 110px;
+      font-family: ui-monospace, monospace; font-size: 11.5px; line-height: 1.4;
+    }
+
+    .checkbox-group { display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer; }
+    .checkbox-group input { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
+    .checkbox-group label { margin-bottom: 0; color: #e2e8f0; cursor: pointer; font-size: 12px; }
+
+    .row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .col { flex: 1; }
+
+    .collapsible-trigger {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; background: none; border: none; color: #cbd5e1; font-size: 12px;
+      font-weight: 600; cursor: pointer; padding: 0; text-align: left;
+    }
+    .collapsible-content { margin-top: 8px; display: none; }
+    .collapsible-content.open { display: block; }
+
+    .btn-group { display: flex; gap: 8px; margin-bottom: 10px; }
+    button.btn {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 12px; font-size: 12px; font-weight: 600; border-radius: 7px;
+      cursor: pointer; border: none; transition: all 0.2s ease;
+    }
+    button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; box-shadow: 0 4px 14px var(--primary-glow); }
+    .btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #4338ca, #4f46e5); }
+    .btn-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3) !important; }
+    .btn-danger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.25); }
+    .btn-secondary { background: #1e293b; color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.08) !important; flex: 0 0 auto !important; }
+    .btn-secondary:hover:not(:disabled) { background: #334155; color: #fff; }
+
+    .progress-bar-container { height: 6px; background: #0f172a; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #4f46e5, #06b6d4); width: 0%; transition: width 0.3s ease; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+    .stat-pill { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 5px; text-align: center; }
+    .stat-value { font-size: 13px; font-weight: 700; color: #fff; }
+    .stat-label { font-size: 9.5px; color: var(--text-muted); text-transform: uppercase; }
+
+    .current-url-display {
+      font-size: 11px; color: #94a3b8; background: #0d1525; padding: 5px 8px;
+      border-radius: 5px; border: 1px solid #1e293b; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; margin-bottom: 8px; font-family: ui-monospace, monospace;
+    }
+
+    .log-header { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .log-clear-btn { background: none; border: none; color: #64748b; cursor: pointer; font-size: 10px; text-decoration: underline; }
+    .log-terminal { height: 95px; background: #070a12; border: 1px solid #1a2234; border-radius: 6px; padding: 6px 8px; overflow-y: auto; font-family: ui-monospace, monospace; font-size: 10px; }
+    .log-entry { margin-bottom: 2px; display: flex; gap: 5px; word-break: break-all; }
+    .log-time { color: #475569; flex-shrink: 0; }
+    .log-entry.info .log-msg { color: #94a3b8; }
+    .log-entry.success .log-msg { color: #34d399; }
+    .log-entry.warn .log-msg { color: #fbbf24; }
+    .log-entry.error .log-msg { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-brand">
+      <div class="header-icon">📸</div>
+      <div class="header-title">App Crawler & Screenshot</div>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn-popout" id="popoutBtn" title="Detach into a persistent standalone window">↗ Pop Out Window</button>
+      <div id="statusBadge" class="status-badge">
+        <span class="pulse-dot"></span>
+        <span id="statusText">IDLE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="detected-tab-banner" id="detectedTabBanner">
+    <span class="detected-tab-url" id="detectedTabUrl">Detecting active tab...</span>
+    <button type="button" class="btn-tab-sync" id="useCurrentTabBtn" title="Fill active tab URL into targets">Use Tab</button>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Target Configuration</div>
+    <label for="targetUrls">Target URLs (one per line):</label>
+    <textarea id="targetUrls" placeholder="https://example.com/dashboard&#10;https://example.com/analytics"></textarea>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="autoDiscover" checked>
+      <label for="autoDiscover">Auto-discover links on the same domain</label>
+    </div>
+
+    <div class="row" style="margin-top: 8px; margin-bottom: 0;">
+      <div class="col">
+        <label for="maxPages">Max Crawl Pages:</label>
+        <input type="number" id="maxPages" value="25" min="1" max="200">
+      </div>
+      <div class="col">
+        <label for="scrollDelay">Scroll Delay (ms):</label>
+        <input type="number" id="scrollDelay" value="450" min="100" max="3000" step="50">
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <button type="button" class="collapsible-trigger" id="authToggleBtn">
+      <span>🔐 Authentication (Optional)</span>
+      <span id="authChevron">▼</span>
+    </button>
+    <div class="collapsible-content" id="authContent">
+      <div style="margin-bottom: 6px;">
+        <label for="loginUrl">Login URL:</label>
+        <input type="text" id="loginUrl" placeholder="https://example.com/login">
+      </div>
+      <div class="row" style="margin-bottom: 0;">
+        <div class="col">
+          <label for="authUsername">Username / Email:</label>
+          <input type="text" id="authUsername" placeholder="user@company.com" autocomplete="username">
+        </div>
+        <div class="col">
+          <label for="authPassword">Password:</label>
+          <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" id="startBtn">🚀 Start Crawl & Screenshot</button>
+    <button class="btn btn-danger" id="stopBtn" disabled>⏹ Stop</button>
+    <button class="btn btn-secondary" id="resetBtn" title="Reset State">🔄 Reset</button>
+  </div>
+
+  <div class="section" style="margin-bottom: 0;">
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-pill">
+        <div class="stat-value" id="statQueue">0</div>
+        <div class="stat-label">In Queue</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-value" id="statVisited" style="color: #34d399;">0</div>
+        <div class="stat-label">Captured</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-value" id="statFailed" style="color: #f87171;">0</div>
+        <div class="stat-label">Failed</div>
+      </div>
+    </div>
+    <div class="current-url-display" id="currentUrlDisplay">Current: Idle</div>
+    <div class="log-header">
+      <span>Activity Logs</span>
+      <button type="button" class="log-clear-btn" id="clearLogsBtn">Clear</button>
+    </div>
+    <div class="log-terminal" id="logTerminal"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
